@@ -19,7 +19,11 @@ object Constants {
         packageName = "com.amazon.mShop.android.shopping",
         appIconColor = 0xFF9900,
         apkFileType = ApkFileType.XAPK,
-        targets = listOf(AppTarget(version = "32.13.2.100", versionCode = 1241320216))
+        targets = listOf(
+            AppTarget(version = "32.13.2.100", versionCode = 1241320216),
+            // Local port: same hooks as RemoveAds/PriceCharts, verified present in 32.17.
+            AppTarget(version = "32.17.0.100", versionCode = 1243230206),
+        )
     )
 
     val FLIPKART_COMPATIBILITY = Compatibility(
