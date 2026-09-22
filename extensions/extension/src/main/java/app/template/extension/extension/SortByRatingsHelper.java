@@ -166,14 +166,6 @@ public final class SortByRatingsHelper {
         + "return b;}"
         + "if(!collect().length)return;"
         + "ensureBtn();"
-        + "if(!window.__morpheSortObs){"
-        + "window.__morpheSortObs=true;"
-        + "var t=null;"
-        + "new MutationObserver(function(){"
-        + "var b=document.getElementById(BTN_ID);"
-        + "if(!b||b.getAttribute('data-active')!=='1')return;"
-        + "clearTimeout(t);t=setTimeout(applySort,600);"
-        + "}).observe(document.body||document.documentElement,{childList:true,subtree:true});}"
         + "}";
 
     /**
