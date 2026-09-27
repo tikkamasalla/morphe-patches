@@ -959,15 +959,13 @@ public final class Shapes {
 
     public static final String KEY_SPEEDO = "speedo_overlay";
 
-    public static boolean speedoPatched() { return false; }
-
     public static boolean speedoEnabled(Context c) {
         return speedoPatched() && c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_SPEEDO, false);
     }
 
     public static void setSpeedoEnabled(Context c, boolean on) {
         c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_SPEEDO, on).commit();
-        SPEEDO = on && speedoPatched();
+        SPEEDO = on && speedoPatched() ? Boolean.TRUE : null;
     }
 
     /** null = off (Google decides); TRUE = force the overlay on. */
@@ -977,10 +975,6 @@ public final class Shapes {
         Boolean v = SPEEDO;
         if (v != null) return v;
         return null;
-    }
-
-    static void refreshSpeedo(Context c) {
-        SPEEDO = speedoEnabled(c) ? Boolean.TRUE : null;
     }
 
     // ---- navigation zoom tiles ---------------------------------------------
