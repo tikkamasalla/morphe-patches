@@ -83,6 +83,7 @@ public final class Shapes {
     public static boolean powerSavingPatched() { return false; }
     public static boolean hideDirectoryPatched() { return false; }
     public static boolean highRefreshPatched() { return false; }
+    public static boolean speedoPatched() { return false; }
     /** Location provider toggle's option: rewritten to return true when it defaults to Play services. */
     public static boolean playLocationByDefault() { return false; }
 
@@ -529,6 +530,7 @@ public final class Shapes {
             HIDE_DIRECTORY = hideDirectoryEnabled(base);
             HIGH_REFRESH = highRefreshEnabled(base);
             BETTER_OFFLINE = betterOfflineEnabled(base);
+            SPEEDO = speedoEnabled(base) ? Boolean.TRUE : null;
             NAV_ZOOM_BUTTONS = navZoomEnabled(base);
             refreshPlayLocation(base);
             applyProxy(base);
@@ -910,6 +912,10 @@ public final class Shapes {
      *  tolerant. */
     static final float NAV_Z_EPS = 0.12f;
     static final long  NAV_HOLD_MS = 400L;
+    /** Touch pause: while the user is actively interacting with the map,
+     *  the hold loop skips corrections so follow never fights the finger.
+     *  Set from the navigation touch path; read by NavHold. */
+    static volatile long navTouchAt;
     /** Diagnostic only: logs target vs live zoom while holding, and every
      *  blyt.k() call. Flip to true to re-run the correlation that found the
      *  re-target (tracks.md 6af). */
@@ -925,6 +931,14 @@ public final class Shapes {
             Float z = navZoom;
             if (z == null) { navHolding = false; return; }   // nothing to hold; navZoomStep restarts us
             try {
+                // Finger on the map: skip this cycle entirely. The in-call
+                // re-assert from blyt.k() still guards real drift, and the
+                // hold resumes on its next tick after the touch ends.
+                if (android.os.SystemClock.uptimeMillis() - navTouchAt < 1500L) {
+                    try { new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(this, NAV_HOLD_MS); }
+                    catch (Throwable t) { navHolding = false; }
+                    return;
+                }
                 Float live = navLiveZoom();
                 boolean drift = live == null || Math.abs(live.floatValue() - z.floatValue()) > NAV_Z_EPS;
                 boolean ok = drift ? navApply(z, true) : true;
@@ -935,6 +949,38 @@ public final class Shapes {
             try { new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(this, NAV_HOLD_MS); }
             catch (Throwable t) { navHolding = false; }
         }
+    }
+
+    // ---- Speedometer overlay ---------------------------------------------------
+    // Lahiv.f() is the app's own show-decision for the speed overlay. While
+    // the switch is on, force TRUE; while off, run Google's code untouched.
+    // Off by default: the overlay costs a view bind on every nav frame, and
+    // a stuck-on overlay is worse than a missing one while we validate.
+
+    public static final String KEY_SPEEDO = "speedo_overlay";
+
+    public static boolean speedoPatched() { return false; }
+
+    public static boolean speedoEnabled(Context c) {
+        return speedoPatched() && c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_SPEEDO, false);
+    }
+
+    public static void setSpeedoEnabled(Context c, boolean on) {
+        c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_SPEEDO, on).commit();
+        SPEEDO = on && speedoPatched();
+    }
+
+    /** null = off (Google decides); TRUE = force the overlay on. */
+    public static volatile Boolean SPEEDO = null;
+
+    public static Boolean speedoForce() {
+        Boolean v = SPEEDO;
+        if (v != null) return v;
+        return null;
+    }
+
+    static void refreshSpeedo(Context c) {
+        SPEEDO = speedoEnabled(c) ? Boolean.TRUE : null;
     }
 
     // ---- navigation zoom tiles ---------------------------------------------
@@ -1386,6 +1432,17 @@ public final class Shapes {
 
     static void attachTiles(android.view.ViewGroup decor) {
         if (navTiles != null && navTiles.getParent() == decor) { repositionTiles(decor); return; }
+        // Any touch anywhere in this window pauses the nav hold: follow must
+        // never fight the finger. The ticker's 1 s cadence re-arms it 1.5 s
+        // after the last touch ends.
+        try {
+            decor.setOnTouchListener(new android.view.View.OnTouchListener() {
+                @Override public boolean onTouch(android.view.View v, android.view.MotionEvent e) {
+                    navTouchAt = android.os.SystemClock.uptimeMillis();
+                    return false;
+                }
+            });
+        } catch (Throwable ignored) { }
         Context ctx = decor.getContext();
         float d = ctx.getResources().getDisplayMetrics().density;
         // The mask has its own transparent padding, so the VIEW is bigger than the

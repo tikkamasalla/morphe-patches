@@ -148,6 +148,17 @@ public final class CustomizationActivity extends Activity {
             });
         }
 
+        if (Shapes.speedoPatched()) {
+            Switch speedo = new Switch(this);
+            speedo.setChecked(Shapes.speedoEnabled(this));
+            body.addView(toggleRow("Speedometer overlay", "Always shows the speed overlay while navigating", speedo));
+            speedo.setOnCheckedChangeListener((CompoundButton b, boolean on) -> {
+                Shapes.setSpeedoEnabled(this, on);
+                // Lahiv.f() is consulted on every nav frame
+                restartSoon(b);
+            });
+        }
+
         if (Shapes.hideAdsPatched()) {
             Switch ads = new Switch(this);
             ads.setChecked(Shapes.hideAdsEnabled(this));
