@@ -1,8 +1,9 @@
 package org.ungoogled.patches.maps.ui.speedo
 
-import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.patch.PatchException
 import app.morphe.patcher.patch.bytecodePatch
+import app.morphe.patcher.util.smali.ExternalLabel
 import com.android.tools.smali.dexlib2.iface.Method
 import org.ungoogled.patches.maps.ui.markPatched
 import org.ungoogled.patches.maps.ui.sharedExtensionPatch
@@ -57,7 +58,7 @@ val speedometerOverlayPatch = bytecodePatch(
                 if (impl.registerCount - parameterRegisters < 1) {
                     throw PatchException("Lahiv.f has no free local register")
                 }
-                mutableMethod.addInstructions(
+                mutableMethod.addInstructionsWithLabels(
                     0,
                     """
                         invoke-static {}, Lorg/ungoogled/ui/Shapes;->speedoForce()Ljava/lang/Boolean;
@@ -65,7 +66,7 @@ val speedometerOverlayPatch = bytecodePatch(
                         if-eqz v0, :google_decision
                         return-object v0
                     """.trimIndent(),
-                    app.morphe.patcher.util.smali.ExternalLabel(
+                    ExternalLabel(
                         "google_decision",
                         impl.instructions.first(),
                     ),
